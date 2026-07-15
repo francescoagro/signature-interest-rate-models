@@ -18,7 +18,8 @@ except ImportError:
 
 SEEDS = [11, 22, 33, 44, 55]
 
-OUTPUT_DIR = "/Users/francescoagro/Desktop/TESI/code/results/experiment3_multiseed"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "results", "experiment3_multiseed"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
