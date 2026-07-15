@@ -13,7 +13,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 
-OUTPUT_DIR = "/Users/francescoagro/Desktop/TESI/code/results/experiment2_multiseed"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "results", "experiment2_multiseed"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 SEEDS = [11, 22, 33, 44, 55]
