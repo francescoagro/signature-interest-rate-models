@@ -33,7 +33,8 @@ M0 = 0.0
 
 RIDGE_ALPHAS = np.logspace(-8, 3, 25)
 
-RESULTS_DIR = "/Users/francescoagro/Desktop/TESI/code/results/experiment6_multiseed"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "results", "experiment7_multiseed"))
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
