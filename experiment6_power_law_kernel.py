@@ -14,7 +14,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 SEEDS = [11, 22, 33, 44, 55]
 
-OUTPUT_DIR = "/Users/francescoagro/Desktop/TESI/code/results/experiment9"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "results", "experiment6_power_law"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
