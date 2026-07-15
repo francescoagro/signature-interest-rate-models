@@ -34,7 +34,8 @@ SIGMA_0 = 0.01
 BETA = 0.30
 WEIGHT_SCALE = 0.03
 
-RESULTS_DIR = "/Users/francescoagro/Desktop/TESI/code/results/experiment7"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "results", "experiment8_hjm"))
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
