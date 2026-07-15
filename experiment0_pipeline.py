@@ -13,7 +13,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 
 
-os.makedirs("/Users/francescoagro/Desktop/TESI/code/results/experiment0", exist_ok=True)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "results", "experiment0"))
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 seed = 42
@@ -177,7 +179,7 @@ def fit_ridge_model(X, y):
 
     model = Pipeline([
         ("scaler", StandardScaler()),
-        ("ridge", RidgeCV(alphas=ridge_alphas))
+        ("ridge", RidgeCV(alphas=ridge_alphas, cv=5))
     ])
 
     model.fit(X_train, y_train)
@@ -299,13 +301,13 @@ for j, T in enumerate(maturities):
     plot_predicted_vs_true(
         y_true=y_test,
         y_pred=y_pred_test,
-        filename=f"/Users/francescoagro/Desktop/TESI/code/results/experiment0/pred_vs_true_logP_T_{T}.png"
+        filename=os.path.join(RESULTS_DIR, f"pred_vs_true_logP_T_{T}.png")
     )
 
 results_df = pd.DataFrame(results)
 
 results_df.to_csv(
-    "/Users/francescoagro/Desktop/TESI/code/results/experiment0/experiment0_results.csv",
+    os.path.join(RESULTS_DIR, "experiment0_results.csv"),
     index=False
 )
 
