@@ -109,9 +109,8 @@ def compute_log_prices(R_t0, M_t0):
     return logP
 
 
-def log_prices_to_yields(logP):
-    taus = MATURITIES - T0
-    return -logP / taus
+def log_prices_to_yields(logP, tau):
+    return -logP / tau
 
 
 def build_time_augmented_paths(times, R_paths):
@@ -182,9 +181,9 @@ def fit_and_evaluate(seed, X, Y_logP):
         train_rmse_logP = np.sqrt(mean_squared_error(Y_train[:, j], pred_train))
         test_rmse_logP = np.sqrt(mean_squared_error(Y_test[:, j], pred_test))
 
-        true_yield = log_prices_to_yields(Y_test[:, [j]])[:, 0]
-        pred_yield = log_prices_to_yields(pred_test.reshape(-1, 1))[:, 0]
         tau = T - T0
+        true_yield = log_prices_to_yields(Y_test[:, [j]], tau)[:, 0]
+        pred_yield = log_prices_to_yields(pred_test.reshape(-1, 1), tau)[:, 0]
 
         yield_rmse_bp = np.sqrt(mean_squared_error(true_yield, pred_yield)) * 10000
 
