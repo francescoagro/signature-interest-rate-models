@@ -59,7 +59,7 @@ def power_law_weights(n_steps):
     The shift avoids evaluating the singular kernel at u=0.
     """
     lags = np.arange(n_steps + 1)
-    u = (lags + 1) * DT + KERNEL_EPS
+    u = lags * DT + KERNEL_EPS
 
     weights = u ** (H - 0.5)
     weights = weights / math.gamma(H + 0.5)
