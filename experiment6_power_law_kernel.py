@@ -55,15 +55,16 @@ def time_index(t):
 
 def power_law_weights(n_steps):
     """
-    Discrete kernel weights for K(u) = (u + eps)^(H - 1/2) / Gamma(H + 1/2).
-    The shift avoids evaluating the singular kernel at u=0.
+    Cell-integrated kernel weights: w_j = \\int_{j*DT}^{(j+1)*DT} K(u) du,
+    where K(u) = (u + eps)^(H - 1/2) / Gamma(H + 1/2). Using the analytic
+    antiderivative (u+eps)^(H+1/2) / Gamma(H+3/2) avoids evaluating the
+    near-singular kernel pointwise, which materially overweights the most
+    recent interval (see thesis discussion).
     """
-    lags = np.arange(n_steps + 1)
-    u = lags * DT + KERNEL_EPS
-
-    weights = u ** (H - 0.5)
-    weights = weights / math.gamma(H + 0.5)
-
+    j = np.arange(n_steps + 1)
+    lower = j * DT + KERNEL_EPS
+    upper = (j + 1) * DT + KERNEL_EPS
+    weights = (upper ** (H + 0.5) - lower ** (H + 0.5)) / math.gamma(H + 1.5)
     return weights
 
 
@@ -94,7 +95,7 @@ def simulate_power_law_paths(n_paths, t_max, seed):
     M = np.zeros((n_paths, n_steps + 1))
 
     R[:, 0] = R0
-    M[:, 0] = DT * weights[0] * R0
+    M[:, 0] = 0.0
 
     sqrt_dt = np.sqrt(DT)
 
@@ -305,7 +306,7 @@ def run_single_seed(seed):
     train_targets = realized_discounted_payoffs(R_train)
 
     print("Computing nested Monte Carlo validation labels...")
-    validation_targets = nested_mc_prices_from_histories(
+    validation_targets, validation_targets_se = nested_mc_prices_from_histories(
         R_validation,
         seed=seed + 1000,
     )
@@ -434,35 +435,56 @@ def run_single_seed(seed):
 
     results_seed = pd.DataFrame(all_rows)
 
-    return results_seed, predictions, validation_targets
+    se_summary_rows = [
+        {
+            "seed": seed,
+            "maturity": T,
+            "mean_nested_mc_se": validation_targets_se[:, j].mean(),
+            "mean_nested_mc_se_yield_bp": (
+                validation_targets_se[:, j].mean()
+                / validation_targets[:, j].mean()
+                * 10000
+            ),
+        }
+        for j, T in enumerate(MATURITIES)
+    ]
+
+    return results_seed, predictions, validation_targets, se_summary_rows
 
 
 
 def build_summary(results_df):
-    summary = (
+    per_seed = (
         results_df
+        .groupby(["method", "signature_order", "seed"], dropna=False)
+        .agg(
+            price_rmse=("price_rmse", "mean"),
+            yield_rmse_bp=("yield_rmse_bp", "mean"),
+            r2_price=("r2_price", "mean"),
+            selected_alpha=("selected_alpha", "mean"),
+            n_features=("n_features", "first"),
+            signature_runtime=("signature_runtime", "mean"),
+        )
+        .reset_index()
+    )
+    summary = (
+        per_seed
         .groupby(["method", "signature_order"], dropna=False)
         .agg(
             mean_price_rmse=("price_rmse", "mean"),
             std_price_rmse=("price_rmse", "std"),
-
             mean_yield_rmse_bp=("yield_rmse_bp", "mean"),
             std_yield_rmse_bp=("yield_rmse_bp", "std"),
-
             mean_r2_price=("r2_price", "mean"),
             std_r2_price=("r2_price", "std"),
-
             mean_selected_alpha=("selected_alpha", "mean"),
             std_selected_alpha=("selected_alpha", "std"),
-
             n_features=("n_features", "first"),
-
             mean_signature_runtime=("signature_runtime", "mean"),
             std_signature_runtime=("signature_runtime", "std"),
         )
         .reset_index()
     )
-
     return summary
 
 
@@ -660,75 +682,70 @@ def plot_predicted_vs_true_yields(predictions, validation_targets, seed):
 
 def main():
     start_time = time.time()
-
     print("\n================ Experiment 6: Power-law Volterra Memory ================\n")
-
     all_results = []
-
+    all_se_rows = []
     representative_predictions = None
     representative_targets = None
     representative_seed = SEEDS[0]
-
     for seed in SEEDS:
-        results_seed, predictions_seed, validation_targets_seed = run_single_seed(seed)
-
+        results_seed, predictions_seed, validation_targets_seed, se_rows_seed = run_single_seed(seed)
         all_results.append(results_seed)
-
+        all_se_rows.extend(se_rows_seed)
         if seed == representative_seed:
             representative_predictions = predictions_seed
             representative_targets = validation_targets_seed
-
     results = pd.concat(all_results, ignore_index=True)
-
     summary = build_summary(results)
     maturity_summary = build_maturity_summary(results)
-
     print("\n================ Full Multi-seed Results ================")
     print(results)
-
     print("\n================ Summary Results ================")
     print(summary)
-
     print("\n================ Maturity Summary Results ================")
     print(maturity_summary)
-
     results_path = os.path.join(
         OUTPUT_DIR,
         "experiment6_power_law_results.csv",
     )
-
     summary_path = os.path.join(
         OUTPUT_DIR,
         "experiment6_power_law_summary.csv",
     )
-
     maturity_summary_path = os.path.join(
         OUTPUT_DIR,
         "experiment6_power_law_maturity_summary.csv",
     )
-
     results.to_csv(results_path, index=False)
     summary.to_csv(summary_path, index=False)
     maturity_summary.to_csv(maturity_summary_path, index=False)
-
     print("\nSaved results to:")
     print(results_path)
     print(summary_path)
     print(maturity_summary_path)
 
+    nested_mc_se_df = pd.DataFrame(all_se_rows)
+    nested_mc_se_summary = nested_mc_se_df.groupby("maturity", as_index=False).agg(
+        mean_se=("mean_nested_mc_se", "mean"),
+        mean_se_yield_bp=("mean_nested_mc_se_yield_bp", "mean"),
+    )
+    print("\n================ Nested MC Standard Error Summary ================")
+    print(nested_mc_se_summary)
+    nested_mc_se_summary.to_csv(
+        os.path.join(OUTPUT_DIR, "experiment6_nested_mc_se_summary.csv"),
+        index=False,
+    )
+
     plot_error_vs_signature_order(summary)
     plot_error_by_maturity(maturity_summary)
-
     if representative_predictions is not None:
         plot_predicted_vs_true_yields(
             representative_predictions,
             representative_targets,
             representative_seed,
         )
-
     print("\nSaved plots to:")
     print(OUTPUT_DIR)
-
     print("\nTotal runtime:", time.time() - start_time)
     print("==========================================================================\n")
 
