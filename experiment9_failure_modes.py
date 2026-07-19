@@ -238,8 +238,20 @@ def run_single_seed(seed):
 
 
 def build_summary(results_df):
-    summary_df = (
+    per_seed = (
         results_df
+        .groupby(["signature_order", "n_features", "seed"], as_index=False)
+        .agg(
+            train_rmse_logP=("train_rmse_logP", "mean"),
+            test_rmse_logP=("test_rmse_logP", "mean"),
+            test_rmse_yield_bp=("test_rmse_yield_bp", "mean"),
+            condition_number=("condition_number", "mean"),
+            signature_runtime=("signature_runtime", "mean"),
+            selected_alpha=("selected_alpha", "mean"),
+        )
+    )
+    summary_df = (
+        per_seed
         .groupby(["signature_order", "n_features"], as_index=False)
         .agg(
             avg_train_rmse_logP=("train_rmse_logP", "mean"),
