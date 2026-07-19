@@ -467,8 +467,22 @@ def run_single_seed(seed):
 
 
 def make_summary(results_df):
-    summary_df = (
+    per_seed = (
         results_df
+        .groupby(["scenario", "method", "signature_order", "seed"], dropna=False)
+        .agg(
+            mae_yield_bp=("mae_yield_bp", "mean"),
+            rmse_yield_bp=("rmse_yield_bp", "mean"),
+            r2_yield=("r2_yield", "mean"),
+            selected_alpha=("selected_alpha", "mean"),
+            n_features=("n_features", "first"),
+            signature_runtime=("signature_runtime", "mean"),
+        )
+        .reset_index()
+    )
+
+    summary_df = (
+        per_seed
         .groupby(["scenario", "method", "signature_order"], dropna=False)
         .agg(
             mean_mae_yield_bp=("mae_yield_bp", "mean"),
