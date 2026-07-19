@@ -233,8 +233,18 @@ def run_single_seed(seed):
 
 
 def build_summary(results_df):
-    summary_df = (
+    per_seed = (
         results_df
+        .groupby(["representation", "level", "n_features", "seed"], as_index=False)
+        .agg(
+            rmse_logP=("rmse_logP", "mean"),
+            rmse_yield_bp=("rmse_yield_bp", "mean"),
+            r2_logP=("r2_logP", "mean"),
+            runtime=("runtime", "mean"),
+        )
+    )
+    summary_df = (
+        per_seed
         .groupby(["representation", "level", "n_features"], as_index=False)
         .agg(
             avg_rmse_logP=("rmse_logP", "mean"),
