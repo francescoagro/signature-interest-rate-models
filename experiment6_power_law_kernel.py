@@ -140,6 +140,7 @@ def nested_mc_prices_from_histories(R_histories, seed):
 
     n_histories = R_histories.shape[0]
     nested_prices = np.zeros((n_histories, len(MATURITIES)))
+    nested_prices_se = np.zeros((n_histories, len(MATURITIES)))
 
     sqrt_dt = np.sqrt(DT)
 
@@ -165,9 +166,12 @@ def nested_mc_prices_from_histories(R_histories, seed):
                 axis=1,
             )
 
-            nested_prices[h, j] = np.exp(-integral).mean()
+            discounted = np.exp(-integral)
+            nested_prices[h, j] = discounted.mean()
+            # Standard error of the nested MC estimate itself
+            nested_prices_se[h, j] = discounted.std(ddof=1) / np.sqrt(N_NESTED)
 
-    return nested_prices
+    return nested_prices, nested_prices_se
 
 
 def price_to_yield(price, maturity):
