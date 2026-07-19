@@ -251,30 +251,39 @@ def run_single_seed(seed):
 
 
 def build_summary(results_df):
-    summary_df = (
+    per_seed = (
         results_df
+        .groupby(["signature_order", "seed"])
+        .agg(
+            n_features=("n_features", "first"),
+            condition_number=("condition_number", "mean"),
+            signature_runtime=("signature_runtime", "mean"),
+            train_rmse_logP=("train_rmse_logP", "mean"),
+            test_rmse_logP=("test_rmse_logP", "mean"),
+            train_rmse_yield_bp=("train_rmse_yield_bp", "mean"),
+            test_rmse_yield_bp=("test_rmse_yield_bp", "mean"),
+            selected_alpha=("selected_alpha", "mean"),
+        )
+        .reset_index()
+    )
+
+    summary_df = (
+        per_seed
         .groupby("signature_order")
         .agg(
             n_features=("n_features", "first"),
-
             mean_condition_number=("condition_number", "mean"),
             std_condition_number=("condition_number", "std"),
-
             mean_signature_runtime=("signature_runtime", "mean"),
             std_signature_runtime=("signature_runtime", "std"),
-
             mean_train_rmse_logP=("train_rmse_logP", "mean"),
             std_train_rmse_logP=("train_rmse_logP", "std"),
-
             mean_test_rmse_logP=("test_rmse_logP", "mean"),
             std_test_rmse_logP=("test_rmse_logP", "std"),
-
             mean_train_rmse_yield_bp=("train_rmse_yield_bp", "mean"),
             std_train_rmse_yield_bp=("train_rmse_yield_bp", "std"),
-
             mean_test_rmse_yield_bp=("test_rmse_yield_bp", "mean"),
             std_test_rmse_yield_bp=("test_rmse_yield_bp", "std"),
-
             mean_selected_alpha=("selected_alpha", "mean"),
             std_selected_alpha=("selected_alpha", "std"),
         )
