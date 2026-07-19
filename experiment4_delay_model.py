@@ -288,7 +288,7 @@ def run_single_seed(seed):
     train_targets = realized_discounted_payoffs(R_train)
 
     print("Computing nested Monte Carlo validation labels...")
-    validation_targets = nested_mc_prices_from_histories(
+    validation_targets, validation_targets_se = nested_mc_prices_from_histories(
         R_validation,
         seed=seed + 1000,
     )
@@ -412,12 +412,25 @@ def run_single_seed(seed):
 
     results_seed = pd.DataFrame(all_rows)
 
-    return results_seed, predictions, validation_targets
+    se_summary_rows = [
+        {
+            "seed": seed,
+            "maturity": T,
+            "mean_nested_mc_se": validation_targets_se[:, j].mean(),
+            "mean_nested_mc_se_yield_bp": (
+                validation_targets_se[:, j].mean()
+                / validation_targets[:, j].mean()
+                * 10000
+            ),
+        }
+        for j, T in enumerate(MATURITIES)
+    ]
+
+    return results_seed, predictions, validation_targets, se_summary_rows
 
 
 
 def build_summary(results_df):
-    # Step 1: average over maturity WITHIN each seed
     per_seed = (
         results_df
         .groupby(["method", "signature_order", "seed"], dropna=False)
@@ -432,7 +445,6 @@ def build_summary(results_df):
         .reset_index()
     )
 
-    # Step 2: mean/std ACROSS the seed-level values
     summary = (
         per_seed
         .groupby(["method", "signature_order"], dropna=False)
@@ -705,76 +717,71 @@ def plot_predicted_vs_nested_yields(predictions, validation_targets, seed):
 
 def main():
     start_time = time.time()
-
     print("\n================ Experiment 4: Delay Model With Stronger Benchmarks ================\n")
-
     all_results = []
-
+    all_se_rows = []
     representative_predictions = None
     representative_targets = None
     representative_seed = SEEDS[0]
-
     for seed in SEEDS:
-        results_seed, predictions_seed, validation_targets_seed = run_single_seed(seed)
-
+        results_seed, predictions_seed, validation_targets_seed, se_rows_seed = run_single_seed(seed)
         all_results.append(results_seed)
-
+        all_se_rows.extend(se_rows_seed)
         if seed == representative_seed:
             representative_predictions = predictions_seed
             representative_targets = validation_targets_seed
-
     results = pd.concat(all_results, ignore_index=True)
-
     summary = build_summary(results)
     maturity_summary = build_maturity_summary(results)
-
     print("\n================ Full Multi-seed Results ================")
     print(results)
-
     print("\n================ Summary Results ================")
     print(summary)
-
     print("\n================ Maturity Summary Results ================")
     print(maturity_summary)
-
     results_path = os.path.join(
         OUTPUT_DIR,
         "experiment4_multiseed_results.csv",
     )
-
     summary_path = os.path.join(
         OUTPUT_DIR,
         "experiment4_multiseed_summary.csv",
     )
-
     maturity_summary_path = os.path.join(
         OUTPUT_DIR,
         "experiment4_multiseed_maturity_summary.csv",
     )
-
     results.to_csv(results_path, index=False)
     summary.to_csv(summary_path, index=False)
     maturity_summary.to_csv(maturity_summary_path, index=False)
-
     print("\nSaved results to:")
     print(results_path)
     print(summary_path)
     print(maturity_summary_path)
 
+    nested_mc_se_df = pd.DataFrame(all_se_rows)
+    nested_mc_se_summary = nested_mc_se_df.groupby("maturity", as_index=False).agg(
+        mean_se=("mean_nested_mc_se", "mean"),
+        mean_se_yield_bp=("mean_nested_mc_se_yield_bp", "mean"),
+    )
+    print("\n================ Nested MC Standard Error Summary ================")
+    print(nested_mc_se_summary)
+    nested_mc_se_summary.to_csv(
+        os.path.join(OUTPUT_DIR, "experiment4_nested_mc_se_summary.csv"),
+        index=False,
+    )
+
     plot_error_vs_signature_order(summary)
     plot_error_by_maturity(maturity_summary)
     plot_selected_penalties(summary)
-
     if representative_predictions is not None:
         plot_predicted_vs_nested_yields(
             representative_predictions,
             representative_targets,
             representative_seed,
         )
-
     print("\nSaved plots to:")
     print(OUTPUT_DIR)
-
     print("\nTotal runtime:", time.time() - start_time)
     print("==========================================================================\n")
 
