@@ -413,8 +413,24 @@ def run_single_seed(seed):
 
 
 def build_summary(results_df):
-    summary = (
+    # Step 1: average over maturity WITHIN each seed
+    per_seed = (
         results_df
+        .groupby(["method", "signature_order", "seed"], dropna=False)
+        .agg(
+            price_rmse=("price_rmse", "mean"),
+            yield_rmse_bp=("yield_rmse_bp", "mean"),
+            r2_price=("r2_price", "mean"),
+            selected_alpha=("selected_alpha", "mean"),
+            n_features=("n_features", "first"),
+            signature_runtime=("signature_runtime", "mean"),
+        )
+        .reset_index()
+    )
+
+    # Step 2: mean/std ACROSS the seed-level values
+    summary = (
+        per_seed
         .groupby(["method", "signature_order"], dropna=False)
         .agg(
             mean_price_rmse=("price_rmse", "mean"),
