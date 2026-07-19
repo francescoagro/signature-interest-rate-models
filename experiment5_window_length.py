@@ -307,8 +307,23 @@ def run_single_seed(seed):
 
 
 def build_summary(results_df):
-    summary_df = (
+    per_seed = (
         results_df
+        .groupby(["window_label", "seed"])
+        .agg(
+            window_length=("window_length", "first"),
+            signature_order=("signature_order", "first"),
+            n_features=("n_features", "first"),
+            price_rmse=("price_rmse", "mean"),
+            yield_rmse_bp=("yield_rmse_bp", "mean"),
+            r2_price=("r2_price", "mean"),
+            selected_alpha=("selected_alpha", "mean"),
+        )
+        .reset_index()
+    )
+
+    summary_df = (
+        per_seed
         .groupby("window_label")
         .agg(
             window_length=("window_length", "first"),
@@ -326,20 +341,9 @@ def build_summary(results_df):
 
             mean_selected_alpha=("selected_alpha", "mean"),
             std_selected_alpha=("selected_alpha", "std"),
-
-            mean_signature_runtime=("signature_runtime", "mean"),
-            std_signature_runtime=("signature_runtime", "std"),
         )
         .reset_index()
     )
-
-    summary_df["window_label"] = pd.Categorical(
-        summary_df["window_label"],
-        categories=WINDOW_ORDER,
-        ordered=True,
-    )
-
-    summary_df = summary_df.sort_values("window_label").reset_index(drop=True)
 
     return summary_df
 
