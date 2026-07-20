@@ -55,16 +55,20 @@ def time_index(t):
 
 def power_law_weights(n_steps):
     """
-    Cell-integrated kernel weights: w_j = \\int_{j*DT}^{(j+1)*DT} K(u) du,
+    Cell-averaged kernel weights: w_j = (1/DT) * \int_{j*DT}^{(j+1)*DT} K(u) du,
     where K(u) = (u + eps)^(H - 1/2) / Gamma(H + 1/2). Using the analytic
     antiderivative (u+eps)^(H+1/2) / Gamma(H+3/2) avoids evaluating the
     near-singular kernel pointwise, which materially overweights the most
-    recent interval (see thesis discussion).
+    recent interval (see thesis discussion). Dividing by DT turns the cell
+    integral into a cell average, matching the convention expected by
+    compute_convolution_memory (which multiplies by DT again to recover a
+    Riemann sum) -- this keeps the shared consumer function correct both
+    here and for exponential_weights, which returns pointwise kernel values.
     """
     j = np.arange(n_steps + 1)
     lower = j * DT + KERNEL_EPS
     upper = (j + 1) * DT + KERNEL_EPS
-    weights = (upper ** (H + 0.5) - lower ** (H + 0.5)) / math.gamma(H + 1.5)
+    weights = (upper ** (H + 0.5) - lower ** (H + 0.5)) / math.gamma(H + 1.5) / DT
     return weights
 
 
